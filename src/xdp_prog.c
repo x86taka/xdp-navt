@@ -43,18 +43,21 @@ int xdp_prog(struct xdp_md *ctx) {
   }
 
   if (ether_header->h_proto == htons(ETH_P_8021Q)) {
+    uint8_t my_mac[6] = {0x90, 0x1b, 0x0e,
+                         0x63, 0xaa, 0x7f};  // 90:1b:0e:63:aa:7f
+    uint8_t to_qfx_vrf[6] = {0xec, 0x0d, 0x9a,
+                             0xfe, 0xcf, 0x1c};  // ec:0d:9a:fe:cf:1c
+    uint8_t to_qfx_v98[6] = {0xec, 0x0d, 0x9a,
+                             0xfe, 0xcf, 0x1e};  // ec:0d:9a:fe:cf:1e
     struct vlan_ethhdr *vlan_header;
     vlan_header = data;
     if (data + sizeof(*vlan_header) > data_end) {
       return XDP_ABORTED;
     }
     // 運営からのpkt
-    if (ntohs(vlan_header->h_vlan_TCI) == 0x051) {
-      uint8_t dmac[6] = {0xbc, 0x24, 0x11,
-                         0xbb, 0x1e, 0x31};  // VM用のL3のMAC BC:24:11:BB:1E:31
-      __builtin_memcpy(&vlan_header->h_source, &vlan_header->h_dest,
-                       sizeof(dmac));
-      __builtin_memcpy(vlan_header->h_dest, dmac, sizeof(dmac));
+    if (ntohs(vlan_header->h_vlan_TCI) == 0x062) {
+      __builtin_memcpy(vlan_header->h_dest, to_qfx_vrf, sizeof(to_qfx_vrf));
+      __builtin_memcpy(vlan_header->h_source, my_mac, sizeof(my_mac));
 
       // IPv4 Packet
       if (vlan_header->h_vlan_encapsulated_proto == htons(ETH_P_IP)) {
@@ -110,19 +113,15 @@ int xdp_prog(struct xdp_md *ctx) {
     __u16 first_two_digits = (vlan_id & 0xFF00) >> 8;
     int vlan_test = vlan_id;
     vlan_test = vlan_test / 100;
-    if (vlan_test == 10) {
-      // return XDP_DROP;
-    }
+
     first_two_digits = (__u16)vlan_test;
 
-    // set vlan id 81
-    __u16 vlan_id_81 = htons(0x051);
+    // set vlan id 98
+    __u16 vlan_id_81 = htons(0x062);
     __builtin_memcpy(&vlan_header->h_vlan_TCI, &vlan_id_81, sizeof(__u16));
-    uint8_t dmac[6] = {0xbc, 0x24, 0x11,
-                       0xb0, 0x06, 0x80};  // 運営用のL3のMAC BC:24:11:B0:06:80
-    __builtin_memcpy(&vlan_header->h_source, &vlan_header->h_dest,
-                     sizeof(dmac));
-    __builtin_memcpy(vlan_header->h_dest, dmac, sizeof(dmac));
+    // mac change
+    __builtin_memcpy(vlan_header->h_dest, to_qfx_v98, sizeof(to_qfx_v98));
+    __builtin_memcpy(vlan_header->h_source, my_mac, sizeof(my_mac));
 
     // IPv4 Packet
     if (vlan_header->h_vlan_encapsulated_proto == htons(ETH_P_IP)) {
@@ -159,7 +158,7 @@ int xdp_prog(struct xdp_md *ctx) {
       return XDP_TX;
     }
   }
-  return XDP_PASS;
+  return XDP_DROP;
 }
 
 char __license[] SEC("license") = "Dual MIT/GPL";

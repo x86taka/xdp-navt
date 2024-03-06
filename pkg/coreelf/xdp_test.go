@@ -18,19 +18,26 @@ var payload = []byte{
 	0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
 }
 
-func generateIPv4TCPInput(t *testing.T) []byte {
+func generateIPv4UDPInput(t *testing.T) []byte {
 	t.Helper()
 	opts := gopacket.SerializeOptions{FixLengths: true, ComputeChecksums: true}
 	iph := &layers.IPv4{
-		Version: 4, Protocol: layers.IPProtocolTCP, Flags: layers.IPv4DontFragment, TTL: 64, IHL: 5, Id: 1160,
+		Version: 4, Protocol: layers.IPProtocolUDP, Flags: layers.IPv4DontFragment, TTL: 64, IHL: 5, Id: 1160,
 		SrcIP: net.IP{192, 168, 1, 5}, DstIP: net.IP{1, 1, 1, 1},
 	}
+	udph := &layers.UDP{
+		SrcPort: 1234,
+		DstPort: 80,
+	}
+	udph.SetNetworkLayerForChecksum(iph)
 	buf := gopacket.NewSerializeBuffer()
 	err := gopacket.SerializeLayers(buf, opts,
 
 		&layers.Ethernet{DstMAC: []byte{0x00, 0x00, 0x5e, 0x00, 0x11, 0x01}, SrcMAC: []byte{0x00, 0x00, 0x5e, 0x00, 0x11, 0x02}, EthernetType: layers.EthernetTypeDot1Q},
 		&layers.Dot1Q{VLANIdentifier: 1000, Type: layers.EthernetTypeIPv4},
 		iph,
+		udph,
+		gopacket.Payload(payload),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -38,21 +45,28 @@ func generateIPv4TCPInput(t *testing.T) []byte {
 	return buf.Bytes()
 }
 
-func generateIPv4TCPOutput(t *testing.T) []byte {
+func generateIPv4UDPOutput(t *testing.T) []byte {
 
 	t.Helper()
 
 	opts := gopacket.SerializeOptions{FixLengths: true, ComputeChecksums: true}
 	iph := &layers.IPv4{
-		Version: 4, Protocol: layers.IPProtocolTCP, Flags: layers.IPv4DontFragment, TTL: 64, IHL: 5, Id: 1160,
+		Version: 4, Protocol: layers.IPProtocolUDP, Flags: layers.IPv4DontFragment, TTL: 64, IHL: 5, Id: 1160,
 		SrcIP: net.IP{10, 10, 1, 5}, DstIP: net.IP{1, 1, 1, 1},
 	}
+	udph := &layers.UDP{
+		SrcPort: 1234,
+		DstPort: 80,
+	}
+	udph.SetNetworkLayerForChecksum(iph)
 	buf := gopacket.NewSerializeBuffer()
 	err := gopacket.SerializeLayers(buf, opts,
-
-		&layers.Ethernet{SrcMAC: []byte{0x00, 0x00, 0x5e, 0x00, 0x11, 0x01}, DstMAC: []byte{0xbc, 0x24, 0x11, 0xb0, 0x06, 0x80}, EthernetType: layers.EthernetTypeDot1Q},
-		&layers.Dot1Q{VLANIdentifier: 81, Type: layers.EthernetTypeIPv4},
+		//90:1b:0e:63:aa:7f														ec:0d:9a:fe:cf:1e
+		&layers.Ethernet{SrcMAC: []byte{0x90, 0x1b, 0x0e, 0x63, 0xaa, 0x7f}, DstMAC: []byte{0xec, 0x0d, 0x9a, 0xfe, 0xcf, 0x1e}, EthernetType: layers.EthernetTypeDot1Q},
+		&layers.Dot1Q{VLANIdentifier: 98, Type: layers.EthernetTypeIPv4},
 		iph,
+		udph,
+		gopacket.Payload(payload),
 	)
 	//BC:24:11:B0:06:80
 	if err != nil {
@@ -105,7 +119,7 @@ func TestXDPProg(t *testing.T) {
 	}
 	defer objs.Close()
 
-	input := generateIPv4TCPInput(t)
+	input := generateIPv4UDPInput(t)
 	xdpmd := XdpMd{
 		Data:           0,
 		DataEnd:        uint32(len(input)),
@@ -123,7 +137,7 @@ func TestXDPProg(t *testing.T) {
 	}
 
 	// check output
-	want := generateIPv4TCPOutput(t)
+	want := generateIPv4UDPOutput(t)
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Logf("input: %x", input)
 		t.Logf("output: %x", got)
