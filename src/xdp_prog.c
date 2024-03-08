@@ -7,6 +7,7 @@
 #include <linux/ip.h>
 #include <linux/ipv6.h>
 #include <linux/tcp.h>
+#include <linux/udp.h>
 
 #include "bpf_endian.h"
 #include "bpf_helpers.h"
@@ -102,6 +103,16 @@ int xdp_prog(struct xdp_md *ctx) {
           update_checksum(&tcp_header->check, ntohs(old_ip_2_octets),
                           ntohs(new_ip_2_octets));
         }
+        if (ip_header->protocol == IPPROTO_UDP) {
+          struct udphdr *udp_header;
+          data += sizeof(*ip_header);
+          if (data + sizeof(*udp_header) > data_end) {
+            return XDP_ABORTED;
+          }
+          udp_header = data;
+          update_checksum(&udp_header->check, ntohs(old_ip_2_octets),
+                          ntohs(new_ip_2_octets));
+        }
         return XDP_TX;
       }
     }
@@ -152,6 +163,16 @@ int xdp_prog(struct xdp_md *ctx) {
         }
         tcp_header = data;
         update_checksum(&tcp_header->check, ntohs(old_two_octets),
+                        ntohs(new_two_octets));
+      }
+      if (ip_header->protocol == IPPROTO_UDP) {
+        struct udphdr *udp_header;
+        data += sizeof(*ip_header);
+        if (data + sizeof(*udp_header) > data_end) {
+          return XDP_ABORTED;
+        }
+        udp_header = data;
+        update_checksum(&udp_header->check, ntohs(old_two_octets),
                         ntohs(new_two_octets));
       }
 
