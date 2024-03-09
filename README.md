@@ -1,8 +1,9 @@
-# goxdp
-A sample for writing XDP programs in Go
+# XDP-NAVT
 
-It's best to change this to get started with code for xdp using [cilium/ebpf](https://github.com/cilium/ebpf).
+NAVT(Network Address Vlan Translation) with XDP
 
+VID:100, 192.168.0.1(inside) <=> VID:98, 10.10.0.1 (outside)  
+VID:1500, 192.168.0.1(inside0 <=> VID:98, 10.15.0.1(outside)
 
 ## Build
 In today's Linux, bpf_helper_defs.h is supposed to build.
@@ -27,10 +28,10 @@ make
 
 ## Run
 ```shell
-./bin/goxdp
+./bin/xdp-navt
 
 # use option
-./bin/goxdp --device eth2 --device eth3
+./bin/xdp-navt --device eth2
 ```
 
 ## Test
