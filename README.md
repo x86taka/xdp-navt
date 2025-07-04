@@ -3,7 +3,7 @@
 NAVT(Network Address Vlan Translation) with XDP
 
 VID:100, 192.168.0.1(inside) <=> VID:98, 10.10.0.1 (outside)  
-VID:1500, 192.168.0.1(inside0 <=> VID:98, 10.15.0.1(outside)
+VID:1500, 192.168.0.1(inside) <=> VID:98, 10.15.0.1 (outside)
 
 ## Build
 In today's Linux, bpf_helper_defs.h is supposed to build.
