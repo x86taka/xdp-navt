@@ -12,6 +12,28 @@
 #include "bpf_endian.h"
 #include "bpf_helpers.h"
 
+// eBPF maps for configuration
+struct {
+  __uint(type, BPF_MAP_TYPE_ARRAY);
+  __uint(max_entries, 1);
+  __type(key, __u32);
+  __type(value, struct mac_config);
+} mac_config_map SEC(".maps");
+
+struct {
+  __uint(type, BPF_MAP_TYPE_ARRAY);
+  __uint(max_entries, 1);
+  __type(key, __u32);
+  __type(value, struct vlan_config);
+} vlan_config_map SEC(".maps");
+
+struct {
+  __uint(type, BPF_MAP_TYPE_ARRAY);
+  __uint(max_entries, 1);
+  __type(key, __u32);
+  __type(value, struct ip_config);
+} ip_config_map SEC(".maps");
+
 static __always_inline void update_checksum(uint16_t *csum, uint16_t old_val,
                                             uint16_t new_val) {
   uint32_t new_csum_value;
@@ -44,21 +66,24 @@ int xdp_prog(struct xdp_md *ctx) {
   }
 
   if (ether_header->h_proto == htons(ETH_P_8021Q)) {
-    uint8_t my_mac[6] = {0x90, 0x1b, 0x0e,
-                         0x63, 0xaa, 0x7f};  // 90:1b:0e:63:aa:7f
-    uint8_t to_qfx_vrf[6] = {0xec, 0x0d, 0x9a,
-                             0xfe, 0xcf, 0x1c};  // ec:0d:9a:fe:cf:1c
-    uint8_t to_qfx_v98[6] = {0xec, 0x0d, 0x9a,
-                             0xfe, 0xcf, 0x1e};  // ec:0d:9a:fe:cf:1e
+    // Load configuration from maps
+    __u32 key = 0;
+    struct mac_config *mac_cfg = bpf_map_lookup_elem(&mac_config_map, &key);
+    struct vlan_config *vlan_cfg = bpf_map_lookup_elem(&vlan_config_map, &key);
+    struct ip_config *ip_cfg = bpf_map_lookup_elem(&ip_config_map, &key);
+
+    if (!mac_cfg || !vlan_cfg || !ip_cfg) {
+      return XDP_DROP;
+    }
     struct vlan_ethhdr *vlan_header;
     vlan_header = data;
     if (data + sizeof(*vlan_header) > data_end) {
       return XDP_ABORTED;
     }
-    // 運営からのpkt
-    if (ntohs(vlan_header->h_vlan_TCI) == 0x062) {
-      __builtin_memcpy(vlan_header->h_dest, to_qfx_vrf, sizeof(to_qfx_vrf));
-      __builtin_memcpy(vlan_header->h_source, my_mac, sizeof(my_mac));
+    // 運営からのpkt (to upstream)
+    if (ntohs(vlan_header->h_vlan_TCI) == vlan_cfg->management_vlan) {
+      __builtin_memcpy(vlan_header->h_dest, mac_cfg->to_upstream, ETH_ALEN);
+      __builtin_memcpy(vlan_header->h_source, mac_cfg->my_mac, ETH_ALEN);
 
       // IPv4 Packet
       if (vlan_header->h_vlan_encapsulated_proto == htons(ETH_P_IP)) {
@@ -86,7 +111,7 @@ int xdp_prog(struct xdp_md *ctx) {
 
         __uint32_t daddr = ntohl(ip_header->daddr) << 16;
         daddr = daddr >> 16;
-        daddr = htonl(0xC0A80000 | daddr);
+        daddr = htonl(ip_cfg->inside_network | daddr);
 
         __u16 old_ip_2_octets = ntohl(ip_header->daddr) >> 16;
         __u16 new_ip_2_octets = ntohl(daddr) >> 16;
@@ -127,12 +152,12 @@ int xdp_prog(struct xdp_md *ctx) {
 
     first_two_digits = (__u16)vlan_test;
 
-    // set vlan id 98
-    __u16 vlan_id_81 = htons(0x062);
-    __builtin_memcpy(&vlan_header->h_vlan_TCI, &vlan_id_81, sizeof(__u16));
+    // set vlan id 98 (to downstream)
+    __u16 vlan_id_98 = htons(vlan_cfg->output_vlan);
+    __builtin_memcpy(&vlan_header->h_vlan_TCI, &vlan_id_98, sizeof(__u16));
     // mac change
-    __builtin_memcpy(vlan_header->h_dest, to_qfx_v98, sizeof(to_qfx_v98));
-    __builtin_memcpy(vlan_header->h_source, my_mac, sizeof(my_mac));
+    __builtin_memcpy(vlan_header->h_dest, mac_cfg->to_downstream, ETH_ALEN);
+    __builtin_memcpy(vlan_header->h_source, mac_cfg->my_mac, ETH_ALEN);
 
     // IPv4 Packet
     if (vlan_header->h_vlan_encapsulated_proto == htons(ETH_P_IP)) {
@@ -147,7 +172,7 @@ int xdp_prog(struct xdp_md *ctx) {
       __uint32_t saddr = ntohl(ip_header->saddr) << 16;
       saddr = saddr >> 16;
 
-      __uint32_t vlan_to_saddr = first_two_digits << 16 | 0x0A000000 | saddr;
+      __uint32_t vlan_to_saddr = first_two_digits << 16 | ip_cfg->outside_network | saddr;
       // csum
       __uint16_t old_two_octets = ntohl(ip_header->saddr) >> 16;
       __uint16_t new_two_octets = vlan_to_saddr >> 16;
