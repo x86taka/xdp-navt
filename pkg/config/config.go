@@ -30,12 +30,27 @@ type Config struct {
 
 // DefaultConfig returns a configuration with default values
 func DefaultConfig() *Config {
-	myMac, _ := net.ParseMAC("90:1b:0e:63:aa:7f")
-	toUpstream, _ := net.ParseMAC("ec:0d:9a:fe:cf:1c")   // QFX VRF (upstream)
-	toDownstream, _ := net.ParseMAC("ec:0d:9a:fe:cf:1e") // QFX VLAN 98 (downstream)
+	myMac, err := net.ParseMAC("90:1b:0e:63:aa:7f")
+	if err != nil {
+		panic("invalid hardcoded my_mac: " + err.Error())
+	}
+	toUpstream, err := net.ParseMAC("ec:0d:9a:fe:cf:1c")   // QFX VRF (upstream)
+	if err != nil {
+		panic("invalid hardcoded to_upstream MAC: " + err.Error())
+	}
+	toDownstream, err := net.ParseMAC("ec:0d:9a:fe:cf:1e") // QFX VLAN 98 (downstream)
+	if err != nil {
+		panic("invalid hardcoded to_downstream MAC: " + err.Error())
+	}
 
-	_, insideNet, _ := net.ParseCIDR("192.168.0.0/16")
-	_, outsideNet, _ := net.ParseCIDR("10.0.0.0/24")
+	_, insideNet, err := net.ParseCIDR("192.168.0.0/16")
+	if err != nil {
+		panic("invalid hardcoded inside_network CIDR: " + err.Error())
+	}
+	_, outsideNet, err := net.ParseCIDR("10.0.0.0/24")
+	if err != nil {
+		panic("invalid hardcoded outside_network CIDR: " + err.Error())
+	}
 
 	return &Config{
 		Mac: MacConfig{
