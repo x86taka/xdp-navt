@@ -61,9 +61,9 @@ func configureMaps(obj *xdpObjects, cfg *config.Config) error {
 
 	// Configure MAC addresses
 	macCfg := MacConfigBPF{}
-	copy(macCfg.MyMac[:], cfg.Mac.MyMac[:6])
-	copy(macCfg.ToUpstream[:], cfg.Mac.ToUpstream[:6])
-	copy(macCfg.ToDownstream[:], cfg.Mac.ToDownstream[:6])
+	copy(macCfg.MyMac[:], cfg.Mac.MyMac)
+	copy(macCfg.ToUpstream[:], cfg.Mac.ToUpstream)
+	copy(macCfg.ToDownstream[:], cfg.Mac.ToDownstream)
 
 	err := obj.MacConfigMap.Put(&key, &macCfg)
 	if err != nil {
