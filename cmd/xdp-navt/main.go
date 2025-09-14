@@ -50,11 +50,11 @@ func newApp(version string) *cli.App {
 		},
 		cli.UintFlag{
 			Name:  "management-vlan",
-			Usage: "Management VLAN ID (default: 98)",
+			Usage: "Management VLAN ID (default: 98, 0x62)",
 		},
 		cli.UintFlag{
 			Name:  "output-vlan",
-			Usage: "Output VLAN ID (default: 98)",
+			Usage: "Output VLAN ID (default: 98, 0x62)",
 		},
 		cli.StringFlag{
 			Name:  "inside-network",
