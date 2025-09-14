@@ -177,6 +177,7 @@ int xdp_prog(struct xdp_md *ctx) {
         }
         udp_header = data;
         /* adjust UDP checksum after source address change */
+        /* adjust UDP checksum after source address change */
         update_checksum(&udp_header->check, htons(old_two_octets),
                         htons(new_two_octets));
       }
