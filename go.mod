@@ -1,6 +1,6 @@
 module github.com/x86taka/xdp-navt
 
-go 1.21
+go 1.22
 
 require (
 	github.com/cilium/ebpf v0.12.3
@@ -8,6 +8,7 @@ require (
 	github.com/google/gopacket v1.1.19
 	github.com/pkg/errors v0.9.1
 	github.com/urfave/cli v1.22.17
+	github.com/urfave/cli/v3 v3.4.1
 	github.com/vishvananda/netlink v1.1.0
 )
 
