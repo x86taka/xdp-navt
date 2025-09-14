@@ -165,6 +165,7 @@ int xdp_prog(struct xdp_md *ctx) {
           return XDP_ABORTED;
         }
         tcp_header = data;
+        /* adjust TCP checksum after source address change */
         update_checksum(&tcp_header->check, htons(old_two_octets),
                         htons(new_two_octets));
       }
