@@ -20,7 +20,16 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang llvm libelf-dev build-essential linux-headers-$(uname -r) linux-libc-dev libbpf-dev gcc-multilib clang-format
+        sudo apt-get install -y \
+          clang \
+          llvm \
+          libelf-dev \
+          build-essential \
+          linux-headers-$(uname -r) \
+          linux-libc-dev \
+          libbpf-dev \
+          gcc-multilib \
+          clang-format
 
     - name: Generate BPF helpers
       run: ./gen_bpf_helper.sh
