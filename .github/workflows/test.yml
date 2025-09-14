@@ -1,0 +1,41 @@
+name: Test
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version-file: ./go.mod
+        cache: true
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          clang \
+          llvm \
+          libelf-dev \
+          build-essential \
+          linux-headers-$(uname -r) \
+          linux-libc-dev \
+          libbpf-dev \
+          gcc-multilib \
+          clang-format
+
+    - name: Generate BPF helpers
+      run: ./gen_bpf_helper.sh
+
+    - name: Build
+      run: make build
+
+    - name: Run tests
+      run: make test
