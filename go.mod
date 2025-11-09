@@ -1,9 +1,9 @@
 module github.com/x86taka/xdp-navt
 
-go 1.22
+go 1.24.0
 
 require (
-	github.com/cilium/ebpf v0.12.3
+	github.com/cilium/ebpf v0.20.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/gopacket v1.1.19
 	github.com/pkg/errors v0.9.1
@@ -17,7 +17,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/vishvananda/netns v0.0.5 // indirect
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a // indirect
-	golang.org/x/sys v0.16.0 // indirect
+	golang.org/x/sys v0.37.0 // indirect
 )
 
 replace github.com/google/gopacket v1.1.19 => github.com/x86taka/gopacket v0.0.0-20231210055638-74b4deb65353
