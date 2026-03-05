@@ -125,8 +125,9 @@ int xdp_prog(struct xdp_md *ctx) {
             return XDP_ABORTED;
           }
           tcp_header = data;
-          update_checksum(&tcp_header->check, ntohs(old_ip_2_octets),
-                          ntohs(new_ip_2_octets));
+          /* update TCP checksum with values in network byte order */
+          update_checksum(&tcp_header->check, htons(old_ip_2_octets),
+                          htons(new_ip_2_octets));
         }
         if (ip_header->protocol == IPPROTO_UDP) {
           struct udphdr *udp_header;
@@ -135,8 +136,9 @@ int xdp_prog(struct xdp_md *ctx) {
             return XDP_ABORTED;
           }
           udp_header = data;
-          update_checksum(&udp_header->check, ntohs(old_ip_2_octets),
-                          ntohs(new_ip_2_octets));
+          /* update UDP checksum with values in network byte order */
+          update_checksum(&udp_header->check, htons(old_ip_2_octets),
+                          htons(new_ip_2_octets));
         }
         return XDP_TX;
       }
@@ -176,8 +178,9 @@ int xdp_prog(struct xdp_md *ctx) {
       // csum
       __uint16_t old_two_octets = ntohl(ip_header->saddr) >> 16;
       __uint16_t new_two_octets = vlan_to_saddr >> 16;
-      update_checksum(&ip_header->check, ntohs(old_two_octets),
-                      ntohs(new_two_octets));
+      /* adjust IP header checksum after source address change */
+      update_checksum(&ip_header->check, htons(old_two_octets),
+                      htons(new_two_octets));
       vlan_to_saddr = htonl(vlan_to_saddr);
       __builtin_memcpy(&ip_header->saddr, &vlan_to_saddr, sizeof(__uint32_t));
       if (ip_header->protocol == IPPROTO_TCP) {
@@ -187,8 +190,9 @@ int xdp_prog(struct xdp_md *ctx) {
           return XDP_ABORTED;
         }
         tcp_header = data;
-        update_checksum(&tcp_header->check, ntohs(old_two_octets),
-                        ntohs(new_two_octets));
+        /* adjust TCP checksum after source address change */
+        update_checksum(&tcp_header->check, htons(old_two_octets),
+                        htons(new_two_octets));
       }
       if (ip_header->protocol == IPPROTO_UDP) {
         struct udphdr *udp_header;
@@ -197,8 +201,9 @@ int xdp_prog(struct xdp_md *ctx) {
           return XDP_ABORTED;
         }
         udp_header = data;
-        update_checksum(&udp_header->check, ntohs(old_two_octets),
-                        ntohs(new_two_octets));
+        /* adjust UDP checksum after source address change */
+        update_checksum(&udp_header->check, htons(old_two_octets),
+                        htons(new_two_octets));
       }
 
       return XDP_TX;
